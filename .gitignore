@@ -1,0 +1,15 @@
+
+# OS
+.DS_Store
+Thumbs.db
+
+# But if you need to keep structure, use .env instead
+.env
+.env.local
+
+# Backup files
+*.bak
+
+
+# Uploaded images (if any)
+bin/

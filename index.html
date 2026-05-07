@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мониторинг работы котла</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 10px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin: 10px 0;
+            color: #2c3e50;
+        }
+        
+        .boiler-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px; /* Максимальная ширина для десктопа */
+            margin: 0 auto;
+            aspect-ratio: 16/9; /* Соотношение сторон вашего изображения (настройте!) */
+        }
+        
+        .boiler-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Сохраняет пропорции изображения */
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        /* Общие стили для элементов */
+        .sensor, .pump, .fan, .valve {
+            position: absolute;
+            font-size: 1.2rem;
+            transform: translate(-50%, -50%); /* Центрирование элементов */
+            display: flex;          /* Используем Flexbox */
+            align-items: center;    /* Выравниваем вертикальное положение */
+            justify-content: center;/* Выравниваем горизонтальное положение */
+        }
+        
+        /* Датчики температуры (общий стиль) */
+        .sensor {
+            width: 80px;
+            height: 60px;
+            border-radius: 40%;
+            background: #3498db;
+        }
+        
+        /* Насосы (общий стиль) */
+        .pump {
+            width: 80px;
+            height: 60px;
+            border-radius: 20%;
+            background: #27ae60;
+        }
+        
+        /* Вентилятор (общий стиль) */
+        .fan {
+            width: 105px;
+            height: 65px;
+            border-radius: 40%;
+            background: #27ae60;
+        }
+        
+        /* Клапан (общий стиль) */
+        .valve {
+            width: 80px;
+            height: 50px;
+            background: #27ae60;/*e67e22*/
+            border-radius: 3px;
+        }
+        
+        /* Размеры и шрифты для мобильных устройств */
+        @media (max-width: 1200px) {
+            .
+            sensor, .pump, .fan, .valve {
+                font-size: 2.2rem;
+            }
+            
+            .boiler-container {
+                aspect-ratio: 9/16; /* Вертикальная ориентация для мобильных */
+                max-width: 90%;
+            }
+        
+            .sensor {
+                width: 140px;
+                height: 100px;
+            }
+            
+            .pump {
+                width: 140px;
+                height: 100px;
+            }
+            
+            .fan {
+                width: 150px;
+                height: 100px;
+            }
+            
+            .valve {
+                width: 130px;
+                height: 60px;
+            }
+        }
+        
+        /* Состояния */
+        .active {
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.7);
+            opacity: 1;
+        }
+        
+        .inactive {
+            opacity: 0.75;
+            filter: grayscale(90%);
+        }
+        
+        /* Панель статуса (адаптивная) */
+        .status-panel {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin-top: 5px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            font-size: 1.5rem;
+        }
+        
+        .status-item {
+            text-align: center;
+            margin: 5px;
+            min-width: 30%;
+        }
+        
+        
+        /* Позиционирование элементов на разных экранах */
+        @media screen and (min-width: 1200px) {
+            /* Десктоп-версия */
+            .sensor#temp1 {
+                top: 65%;
+                left: 56%;
+            }
+            .sensor#temp2 {
+                top: 5%;
+                left: 60%;
+            }
+            .pump#pump1 {
+                top: 15%;
+                left: 75%;
+            }
+            .pump#pump2 {
+                top: 15%;
+                left: 83%;
+            }
+            .fan#fan {
+                top: 52%;
+                left: 56%;
+            }
+            .valve#valve {
+                top: 38%;
+                left: 26%;
+            }
+        }
+        
+        @media screen and (max-width: 1200px) {
+            /* Мобильная версия */
+            .sensor#temp1 {
+                top: 12%;
+                left: 75%;
+            }
+            .sensor#temp2 {
+                top: 60%;
+                left: 63%;
+            }
+            .pump#pump1 {
+                top: 20%;
+                left: 20%;
+            }
+            .pump#pump2 {
+                top: 20%;
+                left: 40%;
+            }
+            .fan#fan {
+                top: 52%;
+                left: 63%;
+            }
+            .valve#valve {
+                top: 37.5%;
+                left: 11%;
+            }
+        }
+        
+        #last-update { font-weight: bold; color: black; transition: all 0.5s ease-in-out;  font-size: 1.9rem;}
+        /* Красная подсветка */
+        #last-update.highlighted { color: red; font-size: 1.9rem; }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Мониторинг работы котла</h1>
+                <div class="last-update" id="last-update">
+            Последнее обновление: --
+        </div>
+        <h1><a href="http://46.48.86.153/dom17/index2222.php" class="data-link">Перейти к графикам</a></h1>
+        <div class="boiler-container">
+            <img src="boiler.png" alt="Котел" class="boiler-image">
+            
+            <!-- Элементы управления (проценты от контейнера) -->
+            <div class="sensor" id="temp1">0°C</div>
+            <div class="sensor" id="temp2">0°C</div>
+            
+            <div class="pump inactive" id="pump1">Насос_Г</div>
+            <div class="pump inactive" id="pump2">Насос_Т</div>
+            
+            <div class="fan inactive" id="fan">Мешалка</div>
+            
+            <div class="valve inactive" id="valve">Клапан</div>
+        </div>
+        
+        <div class="status-panel">
+            <div>
+                <div>Температура 1</div>
+                <div class="status-value" id="status-temp1">0°C</div>
+            </div>
+            <div>
+                <div>Температура 2</div>
+                <div class="status-value" id="status-temp2">0°C</div>
+            </div>
+            <div>
+                <div>Состояние</div>
+                <div class="status-value" id="status-state">Ожидание...</div>
+            </div>
+        </div>
+        
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Элементы
+            const temp1 = document.getElementById('temp1');
+            const temp2 = document.getElementById('temp2');
+            const pump1 = document.getElementById('pump1');
+            const pump2 = document.getElementById('pump2');
+            const fan = document.getElementById('fan');
+            const valve = document.getElementById('valve');
+            const statusTemp1 = document.getElementById('status-temp1');
+            const statusTemp2 = document.getElementById('status-temp2');
+            const statusState = document.getElementById('status-state');
+            const lastUpdate = document.getElementById('last-update');
+            
+            // Цвет для температуры
+            function getTempColor(temp) {
+                const ratio = Math.min(1, Math.max(0, (temp - 30) / 60));
+                const red = Math.floor(255 * ratio);
+                const blue = Math.floor(255 * (1 - ratio));
+                return `rgb(${red}, 50, ${blue})`;
+            }
+            
+            // Обновление данных
+            function updateData(data) {
+                // Температуры
+                //temp1.style.background = getTempColor(data.temp1);
+                temp1.textContent = `${data.temp1}°C`;
+                statusTemp1.textContent = `${data.temp1}°C`;
+                
+                //temp2.style.background = getTempColor(data.temp2);
+                temp2.textContent = `${data.temp2}°C`;
+                statusTemp2.textContent = `${data.temp2}°C`;
+                
+                pump1.textContent = `Насос_Г\n ${data.pump1}%`;
+                pump2.textContent = `Насос_T\n ${data.pump2}%`;
+                
+                // Устройства
+                updateDevice(pump1, data.pump1);
+                updateDevice(pump2, data.pump2);
+                updateDevice(fan, data.fan);
+                updateDevice(valve, data.valve);
+                
+                // Статус
+                statusState.textContent = data.pump1 ? "1" : "0";
+                
+                // Проверяем время последнего обновления
+                const currentTime = new Date();
+                const dateDiffInHours = (currentTime - new Date(data.dateT)) / 60000; // Разница в часах
+                if (dateDiffInHours >= 1) {
+                    lastUpdate.classList.add("highlighted"); // Подсветка крупным шрифтом и красным цветом
+                    lastUpdate.textContent = `Последнее обновление: ${data.dateT}, Установке не в сети`;
+                } else {
+                    lastUpdate.classList.remove("highlighted");
+                    lastUpdate.textContent = `Последнее обновление: ${data.dateT}`;
+                }
+            
+
+            }
+            
+            function updateDevice(element, isActive) {
+                element.classList.remove('active', 'inactive');
+                
+                if (isActive) {
+                    element.classList.add('active');
+                } else {
+                    element.classList.add('inactive');
+                }
+            }
+            
+            let isDemoMode = false; // Флаг демо-режима
+            let dataUpdateInterval; // Для хранения интервала
+            
+            function startDemoMode() {
+                if (isDemoMode) return; // Уже в демо-режиме
+                
+                console.log("Демо-режим: используются тестовые данные");
+                isDemoMode = true;
+                
+                function generateRandomData() {
+                    return {
+                        temp1: Math.floor(30 + Math.random() * 50),
+                        temp2: Math.floor(40 + Math.random() * 40),
+                        pump1: Math.random() > 0.5,
+                        pump2: Math.random() > 0.5,
+                        fan: Math.random() > 0.5,
+                        valve: Math.random() > 0.5
+                    };
+                }
+                
+                // Остановить предыдущие попытки подключения
+                if (dataUpdateInterval) clearInterval(dataUpdateInterval);
+                
+                // Установить интервал 3 секунды
+                dataUpdateInterval = setInterval(() => {
+                    updateData(generateRandomData());
+                }, 3000);
+                
+                // Первое обновление
+                updateData(generateRandomData());
+                lastUpdate.textContent = "Демо-режим: тестовые данные";
+            }
+            
+            function fetchData() {
+                if (isDemoMode) return; // Не делать запросы в демо-режиме
+                
+                fetch('get_boiler_data.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateData(data);
+                        // Следующий запрос через 10 секунды
+                        setTimeout(fetchData, 10000);
+                    })
+                    .catch(error => {
+                        console.error('Ошибка:', error);
+                        // Через 10 сек, если ошибка
+                        setTimeout(fetchData, 10000);
+                    });
+            }
+            
+            // Первый запрос
+            fetchData();
+            
+            // Активация демо-режима через 10 сек, если нет ответа
+            setTimeout(() => {
+                if (!isDemoMode && !lastUpdate.textContent.includes(':')) {
+                    startDemoMode();
+                }
+            }, 10000);
+        });
+    </script>
+</body>
+</html>

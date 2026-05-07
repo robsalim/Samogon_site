@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Samog1 Data Viewer</title>
+    <script src="jquery-3.2.1.min.js"></script>
+    <script src="code/highstock.js"></script>
+    <script src="code/themes/grid-light.js"></script>
+    <script src="code/modules/exporting.js"></script>
+    
+    <style>
+        :root {
+            --main-font-size: 16px;
+            --header-font-size: 24px;
+            --highlight-font-size: 32px;
+            --highlight-label-size: 18px;
+            --chart-height: 800px;
+        }
+        
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 10px;
+            font-size: var(--main-font-size);
+            line-height: 1.5;
+        }
+        
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin-bottom: 20px; 
+            font-size: var(--main-font-size);
+        }
+        
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            text-align: left; 
+        }
+        
+        th { 
+            background-color: #f2f2f2; 
+        }
+        
+        .chart-container { 
+            height: var(--chart-height); 
+            width: 100%; 
+            min-width: 100%; 
+            margin-bottom: 20px; 
+        }
+        
+        .info { 
+            margin: 15px 0; 
+            padding: 12px; 
+            background: #f8f9fa; 
+            border-radius: 5px; 
+        }
+        
+        #debug { 
+            color: red; 
+            margin: 15px 0; 
+            font-size: var(--main-font-size);
+        }
+        
+        .data-table { 
+            width: 100%; 
+            margin: 15px 0; 
+        }
+        
+        .data-table td:first-child { 
+            font-weight: bold; 
+            width: 120px; 
+        }
+        
+        .highlight { 
+            font-size: var(--highlight-font-size);
+            font-weight: bold;
+            color: #2c3e50;
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .highlight-label {
+            font-size: var(--highlight-label-size);
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .highlight-container {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        
+        .highlight-item {
+            flex: 1 1 120px;
+            min-width: 120px;
+            text-align: center;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-wrapper {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+        
+        .main-header {
+            margin: 0 0 10px 0;
+            text-align: center;
+            font-size: var(--header-font-size);
+            width: 100%;
+        }
+        
+        .last-update {
+            margin: 0;
+            text-align: center;
+            font-size: var(--main-font-size);
+            color: red;
+        }
+        
+        /* Адаптация для мобильных */
+        @media (max-width: 768px) {
+            :root {
+                --main-font-size: 18px;
+                --header-font-size: 28px;
+                --highlight-font-size: 40px;
+                --highlight-label-size: 20px;
+                --chart-height: 500px;
+            }
+            
+            body {
+                margin: 8px;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+            
+            .highlight-container {
+                gap: 10px;
+            }
+            
+            .highlight-item {
+                flex: 1 1 100%;
+                margin-bottom: 10px;
+            }
+            
+            .chart-container {
+                height: 600px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            :root {
+                --main-font-size: 16px;
+                --header-font-size: 22px;
+                --highlight-font-size: 36px;
+                --highlight-label-size: 18px;
+            }
+            
+            .chart-container {
+                height: 600px;
+            }
+        }
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .data-table {
+            width: auto;
+            min-width: 100%;
+            margin: 0;
+            white-space: nowrap;
+        }
+        
+        .data-table th {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2;
+            z-index: 10;
+        }
+        
+        @media (min-width: 768px) {
+            .table-wrapper {
+                overflow-x: visible;
+            }
+            
+            .data-table {
+                width: 100%;
+                white-space: normal;
+            }
+        }
+        
+        /* Добавляем стили для кнопок управления */
+        .zoom-controls {
+            /*position: absolute;*/
+            top: 0px;
+            /*right: 20px;*/
+            z-index: 10;
+            display: flex;
+            gap: 5px;
+			margin:  0;
+        }
+        
+        .zoom-controls button {
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .zoom-controls button:hover {
+            background: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-wrapper">
+        <h1 class="main-header">Данные по самогону</h1>
+        <div class="last-update">
+            Последние показания (<span id="last-update-time"><?php echo htmlspecialchars($last_data['DateTime']); ?></span>)
+        </div>
+    </div>
+    
+    <!-- Крупные выделенные значения -->
+    <div class="highlight-container">
+        <div class="highlight-item">
+            <div class="highlight-label">Температура колонны</div>
+            <div class="highlight" id="current-t1"><?php echo htmlspecialchars($last_data['t1']); ?>, °C</div>
+        </div>
+        <div class="highlight-item">
+            <div class="highlight-label">Температура бака</div>
+            <div class="highlight" id="current-t2"><?php echo htmlspecialchars($last_data['t2']); ?>, °C</div>
+        </div>
+        <div class="highlight-item">
+            <div class="highlight-label">Мощность, Вт / %</div>
+            <div class="highlight" id="current-pd"><?php echo htmlspecialchars(28*$last_data['pd']); ?> Вт, <?php echo htmlspecialchars($last_data['pd']); ?> %</div>		
+        </div>
+    </div>
+    
+
+     <div class="zoom-controls">
+        <button onclick="setZoom(1)">1ч</button>
+        <button onclick="setZoom(6)">6ч</button>
+        <button onclick="setZoom(24)">24ч</button>
+        <button onclick="resetZoom()">Авто</button>
+    </div>
+    <div id="combined-chart" class="chart-container"></div>
+    
+    <h2>Все параметры</h2>
+	<div class="table-wrapper">
+		<table class="data-table">
+			<tr>
+				<td>t1</td>
+				<td id="data-t1"><?php echo htmlspecialchars($last_data['t1']); ?></td>
+			</tr>
+			<tr>
+				<td>t2</td>
+				<td id="data-t2"><?php echo htmlspecialchars($last_data['t2']); ?></td>
+			</tr>
+			<tr>
+				<td>t3</td>
+				<td id="data-t3"><?php echo htmlspecialchars($last_data['t3']); ?></td>
+			</tr>
+			<tr>
+				<td>pr</td>
+				<td id="data-pr"><?php echo htmlspecialchars($last_data['pr']); ?></td>
+			</tr>
+			<tr>
+				<td>tr</td>
+				<td id="data-tr"><?php echo htmlspecialchars($last_data['tr']); ?></td>
+			</tr>
+			<tr>
+				<td>hc</td>
+				<td id="data-hc"><?php echo htmlspecialchars($last_data['hc']); ?></td>
+			</tr>
+			<tr>
+				<td>pd</td>
+				<td id="data-pd"><?php echo htmlspecialchars($last_data['pd']); ?></td>
+			</tr>
+			<tr>
+				<td>p1</td>
+				<td id="data-p1"><?php echo htmlspecialchars($last_data['p1']); ?></td>
+			</tr>
+			<tr>
+				<td>p2</td>
+				<td id="data-p2"><?php echo htmlspecialchars($last_data['p2']); ?></td>
+			</tr>
+			<tr>
+				<td>pressure</td>
+				<td id="data-pressure"><?php echo htmlspecialchars($last_data['pressure']); ?></td>
+			</tr>
+			<tr>
+				<td>cm</td>
+				<td id="data-cm"><?php echo htmlspecialchars($last_data['cm']); ?></td>
+			</tr>
+			<tr>
+				<td>imode</td>
+				<td id="data-imode"><?php echo htmlspecialchars($last_data['imode']); ?></td>
+			</tr>
+			<tr>
+				<td>imenu</td>
+				<td id="data-imenu"><?php echo htmlspecialchars($last_data['imenu']); ?></td>
+			</tr>
+			<tr>
+				<td>phase</td>
+				<td id="data-phase"><?php echo htmlspecialchars($last_data['phase']); ?></td>
+			</tr>
+			<tr>
+				<td>phaseTime</td>
+				<td id="data-phaseTime"><?php echo htmlspecialchars($last_data['phaseTime']); ?></td>
+			</tr>
+			<tr>
+				<td>spoint</td>
+				<td id="data-spoint"><?php echo htmlspecialchars($last_data['spoint']); ?></td>
+			</tr>
+			<tr>
+				<td>k_integ</td>
+				<td id="data-k_integ"><?php echo htmlspecialchars($last_data['k_integ']); ?></td>
+			</tr>
+			<tr>
+				<td>k_deriv</td>
+				<td id="data-k_deriv"><?php echo htmlspecialchars($last_data['k_deriv']); ?></td>
+			</tr>
+			<tr>
+				<td>kp</td>
+				<td id="data-kp"><?php echo htmlspecialchars($last_data['kp']); ?></td>
+			</tr>
+			<tr>
+				<td>ki</td>
+				<td id="data-ki"><?php echo htmlspecialchars($last_data['ki']); ?></td>
+			</tr>
+			<tr>
+				<td>kd</td>
+				<td id="data-kd"><?php echo htmlspecialchars($last_data['kd']); ?></td>
+			</tr>
+		</table>
+	</div>
+    
+    <div id="debug"></div>
+
+<script>
+// Глобальные переменные
+let chart;
+let isUserZoomed = false;
+let lastRange = null;
+let lastTimestamp = '<?php echo $last_data['DateTime'] ?? ''; ?>';
+let updateInterval = 10000; // 10 секунд
+
+// Инициализация графика
+function initChart() {
+    try {
+        // Проверка загрузки Highcharts
+        if (!window.Highcharts || !Highcharts.stockChart) {
+            throw new Error('Библиотека Highcharts не загрузилась');
+        }
+
+        // Получение данных
+        const graphData = <?php echo json_encode($graph_data); ?>;
+        
+        if (!Array.isArray(graphData)) {
+            throw new Error('Данные должны быть массивом');
+        }
+
+        // Функция подготовки данных
+        function prepareCleanSeries(fieldName) {
+            return graphData
+                .filter(item => !isNaN(item[fieldName]))
+                .map(item => {
+                    const date = new Date(item.datetime);
+                    return [date.getTime(), parseFloat(item[fieldName])];
+                })
+                .sort((a, b) => a[0] - b[0]);
+        }
+
+        Highcharts.setOptions({
+            time: {
+                useUTC: false
+            }
+        });
+
+        // Создание графика
+        chart = Highcharts.stockChart('combined-chart', {
+            chart: {
+                type: "line",
+                zoomType: "x",
+                reflow: false,
+                animation: {
+                    duration: 1000
+                },
+                events: {
+                    load: function() {
+                        // Устанавливаем начальный диапазон 6 часов
+                        const now = Date.now()+3600*1000*5;
+                        this.xAxis[0].setExtremes(
+                            now - (1 * 3600 * 1000),
+                            now
+                        );
+                    }
+                }
+            },
+			// Добавьте этот блок в конфигурацию:
+			tooltip: {
+
+				shared: true,
+				crosshairs: true,
+				formatter: function() {
+					let s = '<b>' + Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) + '</b>';
+					
+					this.points.forEach(point => {
+						s += '<br/><span style="color:' + point.color + '">●</span> ' + 
+							 point.series.name + ': <b>' + 
+							 Highcharts.numberFormat(point.y, 2) + '</b>';
+					});
+					
+					return s;
+				}
+			},
+            rangeSelector: {
+                buttons: [
+                    { type: "minute", count: 15, text: "15m" },
+                    { type: "hour", count: 1, text: "1h" },
+                    { type: "hour", count: 6, text: "6h" },
+                    { type: "all", text: "all" }
+                ],
+                inputEnabled: false,
+                selected: 2,
+            },
+            navigator: {
+                enabled: true,
+                series: {
+                    dataGrouping: {
+                        units: [
+                            ["second", [1]],
+                            ["minute", [1, 5, 15]],
+                            ["hour", [1, 6]],
+                        ],
+                    },
+                },
+            },
+            scrollbar: {
+                enabled: true,
+            },
+            title: {
+                text: 'Параметры котла ПВК',
+                style: { fontSize: '18px' }
+            },
+            xAxis: {
+                events: {
+                    afterSetExtremes: function(e) {
+                        if (e.trigger && e.trigger !== 'syncExtremes') {
+                            isUserZoomed = true;
+                            lastRange = { min: e.min, max: e.max };
+                        }
+                    }
+                }
+            },
+            yAxis: [
+                {
+                    title: { text: 'Температура (°C)', align: 'middle' },
+                    height: '50%',
+                    offset: 0
+                },
+                {
+                    title: { text: 'Мощность (%)', align: 'middle' },
+                    top: '50%',
+                    height: '25%',
+                    opposite: true,
+                    min: 0,
+                    max: 100
+                },
+                {
+                    title: { text: 'Насос (мл/час)', align: 'middle' },
+                    top: '75%',
+                    height: '25%',
+                    opposite: true,
+                    min: 0,
+                    max: 2000
+                }
+            ],
+            series: [
+                {
+                    name: 't колонны (t1)',
+                    data: prepareCleanSeries('t1'),
+                    yAxis: 0,
+                    color: '#FF0000',
+                    lineWidth: 2,
+                    connectNulls: true,
+                    threshold: null,
+                    turboThreshold: 0
+                },
+                {
+                    name: 't бака (t2)',
+                    data: prepareCleanSeries('t2'),
+                    yAxis: 0,
+                    color: '#00AA00',
+                    lineWidth: 2,
+                    connectNulls: true,
+                    threshold: null,
+                    turboThreshold: 0
+                },
+                {
+                    name: 'Мощность (pd)',
+                    data: prepareCleanSeries('pd'),
+                    yAxis: 1,
+                    color: '#0000FF',
+                    lineWidth: 2,
+                    connectNulls: true,
+                    threshold: null,
+                    turboThreshold: 0
+                },
+                {
+                    name: 'Насос (мл/час)',
+                    data: prepareCleanSeries('p1'),
+                    yAxis: 2,
+                    color: '#0000FF',
+                    lineWidth: 2,
+                    connectNulls: true,
+                    threshold: null,
+                    turboThreshold: 0
+                }
+            ],
+            plotOptions: {
+                series: {
+                    animation: {
+                        duration: 1000,
+                        defer: 500
+                    },
+                    marker: {
+                        enabled: false
+                    },
+                    states: {
+                        hover: {
+                            enabled: true,
+                            lineWidthPlus: 2
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (e) {
+        console.error('Ошибка:', e);
+        $('#debug').html('<div class="error">' + e.message + '</div>');
+    }
+}
+
+
+// Функция обновления данных
+function updateData() {
+    $.ajax({
+        url: 'get_new_data.php?last=' + encodeURIComponent(lastTimestamp),
+        dataType: 'json',
+        success: function(data) {
+            if (data && data.length > 0) {
+                // Обновляем последнюю временную метку
+                lastTimestamp = data[data.length-1].datetime;
+                
+                // Обновляем данные на графике - передаем ВЕСЬ МАССИВ
+                updateChart(data);
+                
+                // Обновляем текущие значения - передаем ПОСЛЕДНИЙ ОБЪЕКТ
+                const lastData = data[data.length-1];
+                console.log('Последние данные для таблицы:', lastData); // Отладка
+                updateCurrentValues(lastData);
+                
+                // Обновляем время последнего обновления
+                $('#last-update-time').text(new Date(lastTimestamp).toLocaleString());
+            }
+            
+            // Планируем следующее обновление
+            setTimeout(updateData, updateInterval);
+        },
+        error: function(xhr, status, error) {
+            console.error('Ошибка при обновлении данных:', error);
+            setTimeout(updateData, updateInterval);
+        }
+    });
+}
+
+
+
+// Обновление графика
+function updateChart(newData) {
+
+    console.log('Данные для графика:', newData);
+    
+    if (!newData || newData.length === 0) {
+        console.log('Нет новых данных для графика');
+        return;
+    }
+    
+    console.log('Количество новых точек:', newData.length);
+
+
+    // Добавляем новые точки
+    chart.series.forEach((series, index) => {
+        const field = ['t1', 't2', 'pd', 'p1'][index];
+        newData.forEach(point => {
+            const timestamp = new Date(point.datetime).getTime();
+            const value = parseFloat(point[field]);
+            if (!isNaN(value)) {
+                series.addPoint([timestamp, value], false, false);
+            }
+        });
+    });
+    
+    // Автоматическое смещение, если не в ручном зуме
+    if (1) {//!isUserZoomed
+        const now = Date.now()+3600*1000*5;
+        chart.xAxis[0].setExtremes(
+            now - (1 * 3600 * 1000),
+            now,
+            true,
+            { duration: 1000 }
+        );
+    }
+    
+    // Единая перерисовка
+    chart.redraw();
+}
+
+// Обновление текущих значений
+function updateCurrentValues(data) {
+    $('#current-t1').text(data.t1 + ', °C');
+    $('#current-t2').text(data.t2 + ', °C');
+    $('#current-pd').text(data.pd * 28 +' Вт, ' + data.pd + ' %');
+
+    
+	// Обновляем таблицу
+	$('#data-t1').text(data.t1);
+	$('#data-t2').text(data.t2);
+	$('#data-t3').text(data.t3);
+	$('#data-pr').text(data.pr);
+	$('#data-tr').text(data.tr);
+	$('#data-hc').text(data.hc);
+	$('#data-pd').text(data.pd);
+	$('#data-p1').text(data.p1);
+	$('#data-p2').text(data.p2);
+	$('#data-pressure').text(data.pressure);
+	$('#data-cm').text(data.cm);
+	$('#data-imode').text(data.imode);
+	$('#data-imenu').text(data.imenu);
+	$('#data-phase').text(data.phase);
+	$('#data-phaseTime').text(data.phaseTime);
+	$('#data-spoint').text(data.spoint);
+	$('#data-k_integ').text(data.k_integ);
+	$('#data-k_deriv').text(data.k_deriv);
+	$('#data-kp').text(data.kp);
+	$('#data-ki').text(data.ki);
+	$('#data-kd').text(data.kd);
+}
+
+// Управление зумом
+function setZoom(hours) {
+    isUserZoomed = true;
+    const now = Date.now()+3600*1000*5;
+    chart.xAxis[0].setExtremes(
+        now - (hours * 3600 * 1000),
+        now,
+        true
+    );
+}
+
+function resetZoom() {
+    isUserZoomed = false;
+    const now = Date.now()+3600*1000*5;
+    chart.xAxis[0].setExtremes(
+        now - (6 * 3600 * 1000),
+        now,
+        true
+    );
+}
+
+// Запуск при загрузке страницы
+$(document).ready(function() {
+    initChart();
+    updateData();
+    
+    // Сброс флага зума через 5 минут
+    setInterval(() => {
+        if (isUserZoomed) {
+            isUserZoomed = false;
+        }
+    }, 90000);
+});
+</script>
+</body>
+</html>
